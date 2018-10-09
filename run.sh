@@ -46,7 +46,7 @@ ip link delete dummy0 >/dev/null 2>&1
 
 mkdir -p /opt/src
 vpn_env="/opt/src/vpn-gen.env"
-if [ -z "$VPN_IPSEC_PSK" ] && [ -z "$VPN_USER" ] && [ -z "$VPN_PASSWORD" ]; then
+if [ -z "$VPN_IPSEC_PSK" ]; then
   if [ -f "$vpn_env" ]; then
     echo
     echo "Retrieving previously generated VPN credentials..."
@@ -55,12 +55,8 @@ if [ -z "$VPN_IPSEC_PSK" ] && [ -z "$VPN_USER" ] && [ -z "$VPN_PASSWORD" ]; then
     echo
     echo "VPN credentials not set by user. Generating random PSK and password..."
     VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 16)"
-    VPN_USER=vpnuser
-    VPN_PASSWORD="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 16)"
 
     echo "VPN_IPSEC_PSK=$VPN_IPSEC_PSK" > "$vpn_env"
-    echo "VPN_USER=$VPN_USER" >> "$vpn_env"
-    echo "VPN_PASSWORD=$VPN_PASSWORD" >> "$vpn_env"
     chmod 600 "$vpn_env"
   fi
 fi
@@ -68,20 +64,16 @@ fi
 # Remove whitespace and quotes around VPN variables, if any
 VPN_IPSEC_PSK="$(nospaces "$VPN_IPSEC_PSK")"
 VPN_IPSEC_PSK="$(noquotes "$VPN_IPSEC_PSK")"
-VPN_USER="$(nospaces "$VPN_USER")"
-VPN_USER="$(noquotes "$VPN_USER")"
-VPN_PASSWORD="$(nospaces "$VPN_PASSWORD")"
-VPN_PASSWORD="$(noquotes "$VPN_PASSWORD")"
 
-if [ -z "$VPN_IPSEC_PSK" ] || [ -z "$VPN_USER" ] || [ -z "$VPN_PASSWORD" ]; then
+if [ -z "$VPN_IPSEC_PSK" ]; then
   exiterr "All VPN credentials must be specified. Edit your 'env' file and re-enter them."
 fi
 
-if printf '%s' "$VPN_IPSEC_PSK $VPN_USER $VPN_PASSWORD" | LC_ALL=C grep -q '[^ -~]\+'; then
+if printf '%s' "$VPN_IPSEC_PSK" | LC_ALL=C grep -q '[^ -~]\+'; then
   exiterr "VPN credentials must not contain non-ASCII characters."
 fi
 
-case "$VPN_IPSEC_PSK $VPN_USER $VPN_PASSWORD" in
+case "$VPN_IPSEC_PSK" in
   *[\\\"\']*)
     exiterr "VPN credentials must not contain these special characters: \\ \" '"
     ;;
@@ -203,14 +195,14 @@ connect-delay 5000
 EOF
 
 # Create VPN credentials
-cat > /etc/ppp/chap-secrets <<EOF
-"$VPN_USER" l2tpd "$VPN_PASSWORD" *
-EOF
+# cat > /etc/ppp/chap-secrets <<EOF
+# "$VPN_USER" l2tpd "$VPN_PASSWORD" *
+# EOF
 
-VPN_PASSWORD_ENC=$(openssl passwd -1 "$VPN_PASSWORD")
-cat > /etc/ipsec.d/passwd <<EOF
-$VPN_USER:$VPN_PASSWORD_ENC:xauth-psk
-EOF
+# VPN_PASSWORD_ENC=$(openssl passwd -1 "$VPN_PASSWORD")
+# cat > /etc/ipsec.d/passwd <<EOF
+# $VPN_USER:$VPN_PASSWORD_ENC:xauth-psk
+# EOF
 
 # Update sysctl settings
 SYST='/sbin/sysctl -e -q -w'
@@ -270,8 +262,6 @@ Connect to your new VPN with these details:
 
 Server IP: $PUBLIC_IP
 IPsec PSK: $VPN_IPSEC_PSK
-Username: $VPN_USER
-Password: $VPN_PASSWORD
 
 Write these down. You'll need them to connect!
 
