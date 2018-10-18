@@ -173,6 +173,7 @@ require chap = yes
 refuse pap = yes
 require authentication = yes
 name = l2tpd
+ppp debug = yes
 pppoptfile = /etc/ppp/options.xl2tpd
 length bit = yes
 EOF
@@ -192,6 +193,7 @@ proxyarp
 lcp-echo-failure 4
 lcp-echo-interval 30
 connect-delay 5000
+logfile /var/log/xl2tpd.log
 EOF
 
 # Create VPN credentials
@@ -276,6 +278,7 @@ EOF
 modprobe af_key
 
 # Start services
+service rsyslog restart
 mkdir -p /run/pluto /var/run/pluto /var/run/xl2tpd
 rm -f /run/pluto/pluto.pid /var/run/pluto/pluto.pid /var/run/xl2tpd.pid
 
